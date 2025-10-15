@@ -48,6 +48,10 @@ def get_geo_data():
     # Apenas municípios de SP, usando o código da UF (35 para SP)
     geo_df_sp = geo_df[geo_df['codigo_uf'] == 35].copy()
     geo_df_sp.rename(columns={'codigo_ibge': 'Ibge'}, inplace=True)
+    
+    # O código IBGE local tem 6 dígitos, o geográfico tem 7. Ajustar para 6.
+    geo_df_sp['Ibge'] = geo_df_sp['Ibge'] // 10
+    
     return geo_df_sp[['Ibge', 'latitude', 'longitude']]
 
 try:
@@ -64,17 +68,21 @@ try:
     st.dataframe(merged_df.head())
 
     # ---------- MAPA DE CALOR ----------
-    map_center = [merged_df['latitude'].mean(), merged_df['longitude'].mean()]
-    m = folium.Map(location=map_center, zoom_start=7)
+    # Verificar se o dataframe não está vazio antes de criar o mapa
+    if not merged_df.empty:
+        map_center = [merged_df['latitude'].mean(), merged_df['longitude'].mean()]
+        m = folium.Map(location=map_center, zoom_start=7)
 
-    # Criar dados para o mapa de calor
-    heat_data = [[row['latitude'], row['longitude'], row['Total_Casos']] for index, row in merged_df.iterrows()]
+        # Criar dados para o mapa de calor
+        heat_data = [[row['latitude'], row['longitude'], row['Total_Casos']] for index, row in merged_df.iterrows()]
 
-    # Adicionar o mapa de calor
-    HeatMap(heat_data, radius=15).add_to(m)
+        # Adicionar o mapa de calor
+        HeatMap(heat_data, radius=15).add_to(m)
 
-    st.subheader("🗺️ Mapa de Calor da Densidade de Casos")
-    st_folium(m, width=1000, height=600)
+        st.subheader("🗺️ Mapa de Calor da Densidade de Casos")
+        st_folium(m, width=1000, height=600)
+    else:
+        st.warning("Não foram encontrados dados geográficos correspondentes para os municípios no arquivo. O mapa não pode ser gerado.")
 
 except FileNotFoundError:
     st.error("Arquivo 'hipertensao_diabetes.csv' não encontrado. Por favor, faça o upload do arquivo.")
